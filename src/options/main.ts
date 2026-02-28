@@ -134,7 +134,7 @@ async function initOptions() {
                   <input type="radio" name="modelSource" value="api" />
                   <div class="source-option-content">
                     <strong>API</strong>
-                    <p>Uses an external AI API (e.g. Claude by Anthropic).</p>
+                    <p>Uses an external AI API (e.g. Claude, Gemini).</p>
                   </div>
                 </label>
               </div>
@@ -350,7 +350,7 @@ async function initOptions() {
                   <input type="radio" name="modelSource" value="api" ${modelSource === 'api' ? 'checked' : ''} />
                   <div class="source-option-content">
                     <strong>API</strong>
-                    <p>Uses an external AI API (e.g. Claude by Anthropic).</p>
+                    <p>Uses an external AI API (e.g. Claude, Gemini).</p>
                   </div>
                 </label>
               </div>
@@ -365,16 +365,18 @@ async function initOptions() {
                 <div class="form-field">
                   <label for="apiType">Type</label>
                   <select id="apiType">
-                    <option value="claude" selected>Claude (Anthropic)</option>
+                    <option value="claude">Claude (Anthropic)</option>
+                    <option value="gemini">Gemini (Google)</option>
+                    <option value="openai-compatible">OpenAI Compatible</option>
                   </select>
                 </div>
                 <div class="form-field">
                   <label for="apiUrl">API URL</label>
                   <input type="url" id="apiUrl" placeholder="https://api.anthropic.com" />
-                  <span class="field-hint">Base URL for the Anthropic API</span>
+                  <span id="apiUrlHint" class="field-hint">Base URL for the API</span>
                 </div>
                 <div class="form-field">
-                  <label for="apiKey">API Key</label>
+                  <label for="apiKey">API Key <span class="field-optional">(optional)</span></label>
                   <div class="api-key-wrapper">
                     <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" />
                     <button type="button" id="toggleApiKey" class="btn-icon">Show</button>

@@ -2,7 +2,7 @@ export type UnderlineStyle = 'solid' | 'wavy' | 'dotted';
 
 export type ModelSource = 'local' | 'api';
 
-export type ApiType = 'claude' | 'openai-compatible';
+export type ApiType = 'claude' | 'gemini' | 'openai-compatible';
 
 export interface ApiConfig {
   type: ApiType;

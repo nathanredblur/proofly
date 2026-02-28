@@ -3,11 +3,29 @@ import { setStorageValue } from '../shared/utils/storage.ts';
 import { STORAGE_KEYS } from '../shared/constants.ts';
 import { requestHostPermission } from '../services/api-proofreader.ts';
 import { logger } from '../services/logger.ts';
-import type { ModelSource, ApiConfig } from '../shared/types.ts';
+import type { ModelSource, ApiConfig, ApiType } from '../shared/types.ts';
 import type {
   ApiTestConnectionResponse,
   ApiFetchModelsResponse,
 } from '../shared/messages/issues.ts';
+
+const API_TYPE_DEFAULTS: Record<ApiType, { url: string; placeholder: string; keyHint: string }> = {
+  claude: {
+    url: 'https://api.anthropic.com',
+    placeholder: 'sk-ant-...',
+    keyHint: 'Anthropic API key',
+  },
+  gemini: {
+    url: 'https://generativelanguage.googleapis.com',
+    placeholder: 'AIza...',
+    keyHint: 'Google AI API key',
+  },
+  'openai-compatible': {
+    url: 'https://api.openai.com',
+    placeholder: 'sk-...',
+    keyHint: 'API key',
+  },
+};
 
 export interface ApiConfigSectionOptions {
   initialModelSource: ModelSource;
@@ -34,7 +52,9 @@ export function setupApiConfigSection(options: ApiConfigSectionOptions): ApiConf
 
   const apiConfigSection = document.querySelector<HTMLElement>('#apiConfigSection');
   const localModelStatus = document.querySelector<HTMLElement>('#localModelStatus');
+  const apiTypeSelect = document.querySelector<HTMLSelectElement>('#apiType');
   const apiUrlInput = document.querySelector<HTMLInputElement>('#apiUrl');
+  const apiUrlHint = document.querySelector<HTMLSpanElement>('#apiUrlHint');
   const apiKeyInput = document.querySelector<HTMLInputElement>('#apiKey');
   const toggleApiKeyBtn = document.querySelector<HTMLButtonElement>('#toggleApiKey');
   const testConnectionBtn = document.querySelector<HTMLButtonElement>('#testConnectionBtn');
@@ -43,12 +63,24 @@ export function setupApiConfigSection(options: ApiConfigSectionOptions): ApiConf
   const modelSelectField = document.querySelector<HTMLElement>('#modelSelectField');
   const selectedModelSelect = document.querySelector<HTMLSelectElement>('#selectedModel');
 
+  const applyTypeDefaults = (type: ApiType) => {
+    const defaults = API_TYPE_DEFAULTS[type];
+    if (!defaults) return;
+    if (apiUrlInput) apiUrlInput.placeholder = defaults.url;
+    if (apiKeyInput) apiKeyInput.placeholder = defaults.placeholder;
+    if (apiUrlHint)
+      apiUrlHint.textContent = `Base URL for the ${type === 'claude' ? 'Anthropic' : type === 'gemini' ? 'Google AI' : ''} API`;
+  };
+
+  if (apiTypeSelect) apiTypeSelect.value = currentApiConfig.type;
   if (apiUrlInput) apiUrlInput.value = currentApiConfig.apiUrl;
   if (apiKeyInput) apiKeyInput.value = currentApiConfig.apiKey;
+  applyTypeDefaults(currentApiConfig.type);
 
   if (currentApiConfig.selectedModel && selectedModelSelect) {
     const label = currentApiConfig.selectedModelDisplayName || currentApiConfig.selectedModel;
     selectedModelSelect.innerHTML = `<option value="${currentApiConfig.selectedModel}">${label}</option>`;
+    modelSelectField?.removeAttribute('hidden');
   }
 
   // ── Status display with timer cleanup ──────────────────────────────────
@@ -86,6 +118,29 @@ export function setupApiConfigSection(options: ApiConfigSectionOptions): ApiConf
   cleanups.push(() =>
     sourceRadios.forEach((radio) => radio.removeEventListener('change', onSourceChange))
   );
+
+  // ── API type change ──────────────────────────────────────────────────
+
+  const onApiTypeChange = () => {
+    if (!apiTypeSelect) return;
+    const newType = apiTypeSelect.value as ApiType;
+    const defaults = API_TYPE_DEFAULTS[newType];
+    currentApiConfig = {
+      ...currentApiConfig,
+      type: newType,
+      apiUrl: defaults?.url ?? currentApiConfig.apiUrl,
+      selectedModel: '',
+      selectedModelDisplayName: '',
+    };
+    if (apiUrlInput) apiUrlInput.value = currentApiConfig.apiUrl;
+    applyTypeDefaults(newType);
+    modelSelectField?.setAttribute('hidden', '');
+    if (selectedModelSelect) selectedModelSelect.innerHTML = '';
+    void saveApiConfig(currentApiConfig);
+  };
+
+  apiTypeSelect?.addEventListener('change', onApiTypeChange);
+  cleanups.push(() => apiTypeSelect?.removeEventListener('change', onApiTypeChange));
 
   // ── Form fields ────────────────────────────────────────────────────────
 
