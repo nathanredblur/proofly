@@ -135,14 +135,14 @@ export async function setStorageValues(data: Partial<StorageData>): Promise<void
   ]);
 }
 
-/**
- * Check if the proofreader model is ready
- */
 export async function isModelReady(): Promise<boolean> {
-  const { proofreaderReady, modelDownloaded } = await getStorageValues([
+  const { modelSource, proofreaderReady, modelDownloaded } = await getStorageValues([
+    STORAGE_KEYS.MODEL_SOURCE,
     STORAGE_KEYS.PROOFREADER_READY,
     STORAGE_KEYS.MODEL_DOWNLOADED,
   ]);
+
+  if (modelSource === 'api') return true;
 
   return proofreaderReady && modelDownloaded;
 }

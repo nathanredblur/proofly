@@ -103,7 +103,7 @@ async function initOptions() {
     await ensureProofreaderModelReady();
   }
 
-  const modelReady = isApiMode ? true : await isModelReady();
+  const modelReady = await isModelReady();
 
   if (!modelReady) {
     app.innerHTML = `
