@@ -306,6 +306,7 @@ function registerBadgeListeners(): void {
 
 registerBadgeListeners();
 void updateActionBadge();
+void getStorageValue(STORAGE_KEYS.MODEL_SOURCE).then(updateModelSourceCache);
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   await initializeStorage();

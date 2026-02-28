@@ -127,13 +127,11 @@ export const openaiCompatibleProvider: ApiProvider = {
           body: JSON.stringify({
             model: selectedModel,
             messages: [
-              { role: 'system', content: JSON_SYSTEM_PROMPT },
               {
                 role: 'user',
-                content: `Proofread the following text and report all errors:\n\n${text}`,
+                content: `${JSON_SYSTEM_PROMPT}\n\nProofread the following text and report all errors:\n\n${text}`,
               },
             ],
-            response_format: { type: 'json_object' },
           }),
         });
 
