@@ -296,10 +296,12 @@ export class ProofreadingManager {
     if (!this.preferenceManager.isAutoCorrectEnabled()) {
       return;
     }
-    if (!this.elementTracker.shouldAutoProofread(element)) {
-      const reason = this.elementTracker.resolveAutoProofreadIgnoreReason(element);
-      this.reportIgnoredElement(element, reason);
-      return;
+    if (!this.elementTracker.isRegistered(element)) {
+      if (!this.elementTracker.shouldAutoProofread(element)) {
+        const reason = this.elementTracker.resolveAutoProofreadIgnoreReason(element);
+        this.reportIgnoredElement(element, reason);
+        return;
+      }
     }
     this.issueManager.clearMessage(element);
     this.registerElement(element);
@@ -378,11 +380,6 @@ export class ProofreadingManager {
       handler = new MirrorTargetHandler(element as HTMLTextAreaElement | HTMLInputElement, {
         onNeedProofread: () => {
           if (!this.preferenceManager.isAutoCorrectEnabled()) {
-            return;
-          }
-          if (!this.elementTracker.shouldAutoProofread(element)) {
-            const reason = this.elementTracker.resolveAutoProofreadIgnoreReason(element);
-            this.reportIgnoredElement(element, reason);
             return;
           }
           void this.proofreadingService.proofread(element);
@@ -466,6 +463,12 @@ export class ProofreadingManager {
             handler?.clearHighlights();
             this.clearElementState(element, { silent: true });
           }
+        },
+        onNeedProofread: () => {
+          if (!this.preferenceManager.isAutoCorrectEnabled()) {
+            return;
+          }
+          void this.proofreadingService.proofread(element);
         },
         initialPalette: this.preferenceManager.buildIssuePalette(),
         initialUnderlineStyle: this.preferenceManager.getUnderlineStyle(),

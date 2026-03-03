@@ -11,11 +11,15 @@ import {
   extractContentEditableText,
   resolveContentEditableOffset,
 } from '../../shared/utils/contenteditable-text.ts';
+import { debounce } from '../../shared/utils/debounce.ts';
+
+const PROOFREAD_DEBOUNCE_MS = 800;
 
 interface ContentEditableHandlerOptions {
   onUnderlineClick: (issueId: string, pageRect: DOMRect, anchorNode: HTMLElement) => void;
   onUnderlineDoubleClick: (issueId: string) => void;
   onInvalidateIssues: () => void;
+  onNeedProofread?: () => void;
   initialPalette: IssueColorPalette;
   initialUnderlineStyle: UnderlineStyle;
   initialAutofixOnDoubleClick: boolean;
@@ -49,6 +53,7 @@ export class ContentEditableTargetHandler implements TargetHandler {
   private measuredDescriptors: UnderlineDescriptor[] = [];
   private resizeObserver: ResizeObserver | null = null;
   private scrollParent: Element | null = null;
+  private readonly debouncedNeedProofread: () => void;
 
   constructor(
     public readonly element: HTMLElement,
@@ -59,6 +64,9 @@ export class ContentEditableTargetHandler implements TargetHandler {
     this.colorPalette = options.initialPalette;
     this.underlineStyle = options.initialUnderlineStyle;
     this.autofixOnDoubleClick = options.initialAutofixOnDoubleClick;
+    this.debouncedNeedProofread = debounce(() => {
+      this.options.onNeedProofread?.();
+    }, PROOFREAD_DEBOUNCE_MS);
   }
 
   attach(): void {
@@ -183,6 +191,7 @@ export class ContentEditableTargetHandler implements TargetHandler {
 
   private readonly handleInput = () => {
     this.options.onInvalidateIssues();
+    this.debouncedNeedProofread();
   };
 
   private readonly handleWindowScroll = () => {
