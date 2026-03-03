@@ -5,6 +5,7 @@ import { createUniqueId } from '../../content/utils.ts';
 import type { ProofreadCorrection, ProofreadResult } from '../types.ts';
 import type { ProofreadingTarget, ProofreadingTargetHooks } from './types.ts';
 import type { ProofreadLifecycleReason, ProofreadLifecycleStatus } from './control-events.ts';
+import { extractContentEditableText } from '../utils/contenteditable-text.ts';
 
 export interface ProofreadLifecycleInternalEvent {
   status: ProofreadLifecycleStatus;
@@ -69,7 +70,7 @@ const defaultGetElementText = (element: HTMLElement): string => {
   if (tagName === 'textarea' || tagName === 'input') {
     return (element as HTMLTextAreaElement | HTMLInputElement).value;
   }
-  return element.textContent || '';
+  return extractContentEditableText(element);
 };
 
 const isSameCorrection = (a: ProofreadCorrection, b: ProofreadCorrection): boolean =>

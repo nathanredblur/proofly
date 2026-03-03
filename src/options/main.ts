@@ -40,6 +40,7 @@ import type {
   CorrectionTypeKey,
 } from '../shared/utils/correction-types.ts';
 import { isMacOS } from '../shared/utils/platform.ts';
+import { extractContentEditableText } from '../shared/utils/contenteditable-text.ts';
 import './style.css';
 import { logger } from '../services/logger.ts';
 import { ensureProofreaderModelReady } from '../services/model-checker.ts';
@@ -931,7 +932,7 @@ async function setupLiveTestArea(
       if (!correction) {
         return;
       }
-      const text = editor.textContent || '';
+      const text = extractContentEditableText(editor as HTMLElement);
       const issueText = text.slice(
         Math.max(0, correction.startIndex),
         Math.min(text.length, correction.endIndex)
@@ -1005,7 +1006,7 @@ async function setupLiveTestArea(
   };
 
   const emitIssuesUpdate = (corrections: ProofreadCorrection[]) => {
-    const text = editor.textContent || '';
+    const text = extractContentEditableText(editor as HTMLElement);
 
     issueLookup.clear();
     corrections
@@ -1095,7 +1096,7 @@ async function setupLiveTestArea(
         });
     },
     debounceMs: 1000,
-    getElementText: (element) => element.textContent || '',
+    getElementText: (element) => extractContentEditableText(element),
     onLifecycleEvent: (event) => {
       if (event.status === 'start') {
         reportProofreaderBusy(true);

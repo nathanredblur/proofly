@@ -18,6 +18,7 @@ import { PreferenceManager } from './services/preference-manager.ts';
 import { IssueManager } from './services/issue-manager.ts';
 import { ContentProofreadingService } from './services/content-proofreading-service.ts';
 import { resolveElementKind } from '../shared/messages/issues.ts';
+import { extractContentEditableText } from '../shared/utils/contenteditable-text.ts';
 
 export class ProofreadingManager {
   private readonly targetHandlers = new Map<HTMLElement, TargetHandler>();
@@ -635,7 +636,7 @@ export class ProofreadingManager {
     if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
       return element.value;
     }
-    return element.textContent || '';
+    return extractContentEditableText(element);
   }
 
   private reportIgnoredElement(element: HTMLElement, reason: ProofreadLifecycleReason): void {

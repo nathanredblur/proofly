@@ -7,6 +7,10 @@ import {
   getCorrectionTypeColor,
   type CorrectionTypeKey,
 } from '../../shared/utils/correction-types.ts';
+import {
+  extractContentEditableText,
+  resolveContentEditableOffset,
+} from '../../shared/utils/contenteditable-text.ts';
 
 interface ContentEditableHandlerOptions {
   onUnderlineClick: (issueId: string, pageRect: DOMRect, anchorNode: HTMLElement) => void;
@@ -115,7 +119,7 @@ export class ContentEditableTargetHandler implements TargetHandler {
   }
 
   highlight(corrections: ProofreadCorrection[]): void {
-    const elementText = this.element.textContent || '';
+    const elementText = extractContentEditableText(this.element);
     this.issues = mapCorrectionsToIssues(corrections, elementText);
 
     if (this.issues.length > 0) {
@@ -479,39 +483,17 @@ function getContentEditableRects(
   startIndex: number,
   endIndex: number
 ): DOMRect[] {
-  const walker = document.createTreeWalker(field, NodeFilter.SHOW_TEXT);
-  let offset = 0;
-  let startNode: Text | null = null;
-  let startLocal = 0;
-  let endNode: Text | null = null;
-  let endLocal = 0;
-  let node: Text | null;
+  const start = resolveContentEditableOffset(field, startIndex);
+  const end = resolveContentEditableOffset(field, endIndex);
 
-  while ((node = walker.nextNode() as Text | null)) {
-    const len = node.length;
-
-    if (!startNode && offset + len > startIndex) {
-      startNode = node;
-      startLocal = startIndex - offset;
-    }
-
-    if (offset + len >= endIndex) {
-      endNode = node;
-      endLocal = endIndex - offset;
-      break;
-    }
-
-    offset += len;
-  }
-
-  if (!startNode || !endNode) {
+  if (!start || !end) {
     return [];
   }
 
   try {
     const range = document.createRange();
-    range.setStart(startNode, Math.max(0, startLocal));
-    range.setEnd(endNode, Math.min(endNode.length, endLocal));
+    range.setStart(start.node, Math.max(0, start.offset));
+    range.setEnd(end.node, Math.min(end.node.length, end.offset));
     return Array.from(range.getClientRects());
   } catch {
     return [];
