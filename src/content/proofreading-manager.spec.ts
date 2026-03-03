@@ -79,16 +79,6 @@ vi.mock('./services/content-proofreading-service.ts', () => ({
   },
 }));
 
-vi.mock('./components/content-highlighter.ts', () => ({
-  ContentHighlighter: class {
-    clearSelection = vi.fn();
-    destroy = vi.fn();
-    setCorrectionColors = vi.fn();
-    previewCorrection = vi.fn();
-    clearPreview = vi.fn();
-  },
-}));
-
 vi.mock('./handlers/mirror-target-handler.ts', () => ({
   MirrorTargetHandler: class {
     attach = vi.fn();
@@ -99,11 +89,15 @@ vi.mock('./handlers/mirror-target-handler.ts', () => ({
   },
 }));
 
-vi.mock('./handlers/direct-target-handler.ts', () => ({
-  DirectTargetHandler: class {
+vi.mock('./handlers/contenteditable-target-handler.ts', () => ({
+  ContentEditableTargetHandler: class {
     attach = vi.fn();
     dispose = vi.fn();
+    clearHighlights = vi.fn();
     clearSelection = vi.fn();
+    highlight = vi.fn();
+    previewIssue = vi.fn();
+    updatePreferences = vi.fn();
   },
 }));
 

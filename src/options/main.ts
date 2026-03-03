@@ -11,8 +11,9 @@ import {
   setStorageValue,
 } from '../shared/utils/storage.ts';
 import { STORAGE_KEYS, STORAGE_DEFAULTS } from '../shared/constants.ts';
-import { ContentHighlighter } from '../content/components/content-highlighter.ts';
+import '../content/components/correction-popover.ts';
 import type { CorrectionPopover } from '../content/components/correction-popover.ts';
+import { ContentEditableTargetHandler } from '../content/handlers/contenteditable-target-handler.ts';
 import { createUniqueId } from '../content/utils.ts';
 import {
   createProofreader,
@@ -916,16 +917,58 @@ async function setupLiveTestArea(
   let activeProofreadingCount = 0;
   const issueLookup = new Map<string, ProofreadCorrection>();
 
-  const highlighter = new ContentHighlighter();
   const popover = document.createElement('proofly-correction-popover') as CorrectionPopover;
   document.body.appendChild(popover);
-  highlighter.setPopover(popover);
+
   let enabledTypes = new Set<CorrectionTypeKey>(initialEnabledTypes);
   let colorConfig = structuredClone(initialColorConfig);
   let colorThemes = buildCorrectionColorThemes(colorConfig);
-
   setActiveCorrectionColors(colorConfig);
-  highlighter.setCorrectionColors(colorThemes);
+
+  const handler = new ContentEditableTargetHandler(editor as HTMLElement, {
+    onUnderlineClick: (issueId, pageRect, anchorNode) => {
+      const correction = issueLookup.get(issueId);
+      if (!correction) {
+        return;
+      }
+      const text = editor.textContent || '';
+      const issueText = text.slice(
+        Math.max(0, correction.startIndex),
+        Math.min(text.length, correction.endIndex)
+      );
+      popover.setCorrection(correction, issueText, (applied) => {
+        controller.applyCorrection(editor as HTMLElement, applied);
+      });
+      const x = pageRect.left + pageRect.width / 2;
+      const y = pageRect.top + pageRect.height;
+      const positionResolver = anchorNode
+        ? () => {
+            if (!anchorNode.isConnected) {
+              return null;
+            }
+            const rect = anchorNode.getBoundingClientRect();
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height };
+          }
+        : undefined;
+      popover.show(x, y, { anchorElement: editor as HTMLElement, positionResolver });
+    },
+    onUnderlineDoubleClick: (issueId) => {
+      const correction = issueLookup.get(issueId);
+      if (!correction) {
+        return;
+      }
+      controller.applyCorrection(editor as HTMLElement, correction);
+    },
+    onInvalidateIssues: () => {
+      if (options.isAutoCorrectEnabled()) {
+        controller.scheduleProofread(editor as HTMLElement);
+      }
+    },
+    initialPalette: colorThemes,
+    initialUnderlineStyle: 'solid',
+    initialAutofixOnDoubleClick: false,
+  });
+  handler.attach();
 
   let proofreaderService: ReturnType<typeof createProofreadingService> | null = null;
 
@@ -964,19 +1007,18 @@ async function setupLiveTestArea(
   const emitIssuesUpdate = (corrections: ProofreadCorrection[]) => {
     const text = editor.textContent || '';
 
-    // Update issue lookup map
     issueLookup.clear();
     corrections
       .filter((correction) => correction.endIndex > correction.startIndex)
       .forEach((correction, index) => {
-        const issueId = `${correction.startIndex}:${correction.endIndex}:${correction.type ?? 'unknown'}:${index}`;
+        const issueId = `${correction.startIndex}:${correction.endIndex}:${index}`;
         issueLookup.set(issueId, correction);
       });
 
     const issues = corrections
       .filter((correction) => correction.endIndex > correction.startIndex)
       .map((correction, index) => {
-        const issueId = `${correction.startIndex}:${correction.endIndex}:${correction.type ?? 'unknown'}:${index}`;
+        const issueId = `${correction.startIndex}:${correction.endIndex}:${index}`;
         const originalText = text.slice(
           Math.max(0, Math.min(correction.startIndex, text.length)),
           Math.max(0, Math.min(correction.endIndex, text.length))
@@ -1067,25 +1109,16 @@ async function setupLiveTestArea(
     element: editor,
     hooks: {
       highlight: (corrections) => {
-        highlighter.highlight(editor, corrections);
+        handler.highlight(corrections);
+        emitIssuesUpdate(corrections);
       },
       clearHighlights: () => {
-        highlighter.clearHighlights(editor);
+        handler.clearHighlights();
       },
       onCorrectionsChange: (corrections) => {
         emitIssuesUpdate(corrections);
       },
     },
-  });
-
-  highlighter.setApplyCorrectionCallback(editor, (_target, correction) => {
-    controller.applyCorrection(editor, correction);
-  });
-
-  editor.addEventListener('input', () => {
-    if (options.isAutoCorrectEnabled()) {
-      controller.scheduleProofread(editor);
-    }
   });
 
   editor.addEventListener('focus', () => {
@@ -1110,16 +1143,7 @@ async function setupLiveTestArea(
 
   const updateEnabledTypes = (types: CorrectionTypeKey[]) => {
     enabledTypes = new Set(types);
-
-    if ('highlights' in CSS) {
-      for (const type of ALL_CORRECTION_TYPES) {
-        if (!enabledTypes.has(type)) {
-          const highlight = (CSS.highlights as any).get(type);
-          highlight?.clear?.();
-        }
-      }
-    }
-
+    handler.clearHighlights();
     void refreshProofreading();
   };
 
@@ -1127,7 +1151,7 @@ async function setupLiveTestArea(
     colorConfig = structuredClone(config);
     colorThemes = buildCorrectionColorThemes(colorConfig);
     setActiveCorrectionColors(colorConfig);
-    highlighter.setCorrectionColors(colorThemes);
+    handler.updatePreferences({ colorPalette: colorThemes });
   };
 
   onStorageChange(STORAGE_KEYS.ENABLED_CORRECTION_TYPES, (newValue) => {
@@ -1142,13 +1166,7 @@ async function setupLiveTestArea(
 
   const clearHighlights = () => {
     controller.resetElement(editor);
-
-    if ('highlights' in CSS) {
-      for (const type of ALL_CORRECTION_TYPES) {
-        const highlight = (CSS.highlights as any).get(type);
-        highlight?.clear?.();
-      }
-    }
+    handler.clearHighlights();
   };
 
   const applyIssue = (issueId: string) => {
@@ -1197,18 +1215,7 @@ async function setupLiveTestArea(
   };
 
   const previewIssue = (issueId: string, active: boolean) => {
-    if (!active) {
-      highlighter.clearPreview();
-      return;
-    }
-
-    const correction = issueLookup.get(issueId);
-    if (!correction) {
-      highlighter.clearPreview();
-      return;
-    }
-
-    highlighter.previewCorrection(editor, correction);
+    handler.previewIssue(active ? issueId : null);
   };
 
   return {
