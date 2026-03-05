@@ -417,8 +417,8 @@ export class ProofreadingManager {
         onInvalidateIssues: () => {
           if (!this.proofreadingService.isRestoringFromHistory(element)) {
             const handler = this.targetHandlers.get(element);
-            handler?.clearHighlights();
-            this.clearElementState(element, { silent: true });
+            handler?.clearSelection();
+            this.softInvalidateElement(element);
           }
         },
         initialPalette: this.preferenceManager.buildIssuePalette(),
@@ -460,8 +460,8 @@ export class ProofreadingManager {
         onInvalidateIssues: () => {
           if (!this.proofreadingService.isRestoringFromHistory(element)) {
             const handler = this.targetHandlers.get(element);
-            handler?.clearHighlights();
-            this.clearElementState(element, { silent: true });
+            handler?.clearSelection();
+            this.softInvalidateElement(element);
           }
         },
         onNeedProofread: () => {
@@ -478,6 +478,13 @@ export class ProofreadingManager {
 
     handler.attach();
     this.targetHandlers.set(element, handler);
+  }
+
+  private softInvalidateElement(element: HTMLElement): void {
+    this.popoverManager.hide();
+    if (this.activeSessionElement === element) {
+      this.activeSessionElement = null;
+    }
   }
 
   private clearElementState(element: HTMLElement, options: { silent?: boolean } = {}): void {

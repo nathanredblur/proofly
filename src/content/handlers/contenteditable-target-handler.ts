@@ -191,6 +191,11 @@ export class ContentEditableTargetHandler implements TargetHandler {
 
   private readonly handleInput = () => {
     this.options.onInvalidateIssues();
+    if (this.issues.length > 0) {
+      this.needsMeasurement = true;
+      this.needsRender = true;
+      this.raf.schedule();
+    }
     this.debouncedNeedProofread();
   };
 
